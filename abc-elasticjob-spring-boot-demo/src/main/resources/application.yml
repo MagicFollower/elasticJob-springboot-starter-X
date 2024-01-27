@@ -16,9 +16,9 @@ elasticjob:
       # 分片，一般情况下设置为1
       shardingTotalCount: 1
       # 失效转移
-      failover: true
+      failover: false
       # 错过重新执行
-      misfire: true
+      misfire: false
       # 是否覆盖已存在作业
       overwrite: true
       # 禁止启动(true禁止，false开启)
@@ -31,9 +31,9 @@ elasticjob:
       # 分片，一般情况下设置为1
       shardingTotalCount: 1
       # 失效转移
-      failover: true
+      failover: false
       # 错过重新执行
-      misfire: true
+      misfire: false
       # 是否覆盖已存在作业
       overwrite: true
       # 禁止启动(true禁止，false开启)

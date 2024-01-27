@@ -3,23 +3,25 @@ package com.abc.elasticjob.helper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.shardingsphere.elasticjob.api.ElasticJob;
-import org.apache.shardingsphere.elasticjob.api.JobConfiguration;
 import org.apache.shardingsphere.elasticjob.lite.internal.schedule.JobScheduleController;
 import org.apache.shardingsphere.elasticjob.lite.internal.schedule.JobScheduler;
 import org.apache.shardingsphere.elasticjob.lite.spring.boot.job.ElasticJobConfigurationProperties;
 import org.apache.shardingsphere.elasticjob.lite.spring.boot.job.ElasticJobProperties;
 import org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter;
 
+import javax.annotation.PostConstruct;
 import java.time.ZoneId;
 import java.util.Collection;
+import java.util.Map;
 
 /**
  * ElasticJobHelper
  * <pre>
  * 1.功能介绍：
  *   1.1 获取注册的所有定时任务名称
- *   1.2 根据定时任务名称检测定时任务是否注册
- *   1.2 启停指定定时任务
+ *   1.2 检测任务是否存在
+ *   1.3 单次触发
+ *   1.2 启停
  * 2.配置示例：
  * {@code
  * elasticjob:
@@ -75,6 +77,12 @@ import java.util.Collection;
 public class ZkElasticJobHelper {
     private final ZookeeperRegistryCenter zookeeperRegistryCenter;
     private final ElasticJobProperties elasticJobProperties;
+    private Map<String, ElasticJobConfigurationProperties> jobNameToJobConfigurationPropertiesMap;
+
+    @PostConstruct
+    public void init() {
+        jobNameToJobConfigurationPropertiesMap = elasticJobProperties.getJobs();
+    }
 
     /**
      * 根据定时任务名称检测定时任务是否注册
@@ -82,7 +90,7 @@ public class ZkElasticJobHelper {
      * @return 已注册的所有定时任务名
      */
     public boolean checkExists(String jobName) {
-        return elasticJobProperties.getJobs().containsKey(jobName);
+        return jobNameToJobConfigurationPropertiesMap.containsKey(jobName);
     }
 
     /**
@@ -91,7 +99,7 @@ public class ZkElasticJobHelper {
      * @return 已注册的所有定时任务名
      */
     public Collection<String> getJobNames() {
-        return elasticJobProperties.getJobs().keySet();
+        return jobNameToJobConfigurationPropertiesMap.keySet();
     }
 
     /**
@@ -104,14 +112,9 @@ public class ZkElasticJobHelper {
         if (!checkExists(jobName)) {
             throw new RuntimeException(String.format("定时任务(%s)不存在!", jobName));
         }
-        ElasticJobConfigurationProperties testJob1ConfigurationProperties = elasticJobProperties.getJobs().get(jobName);
-        // 更新disabled=false
-        testJob1ConfigurationProperties.setDisabled(false);
-        ElasticJob currentJob = SpringHelper.getBean(testJob1ConfigurationProperties.getElasticJobClass());
-        JobConfiguration currentJobConfiguration = testJob1ConfigurationProperties.toJobConfiguration(jobName);
-        JobScheduler jobScheduler = new JobScheduler(zookeeperRegistryCenter, currentJob, currentJobConfiguration);
-        JobScheduleController jobScheduleController = jobScheduler.getJobScheduleController();
-        jobScheduleController.triggerJob();
+        ElasticJobConfigurationProperties jobConfigurationProperties = jobNameToJobConfigurationPropertiesMap.get(jobName);
+        jobConfigurationProperties.setDisabled(true);
+        getJobScheduleController(jobName, jobConfigurationProperties).triggerJob();
         log.info(">>>>>>>>|定时任务{}|已触发!", jobName);
     }
 
@@ -119,14 +122,8 @@ public class ZkElasticJobHelper {
         if (!checkExists(jobName)) {
             throw new RuntimeException(String.format("定时任务(%s)不存在!", jobName));
         }
-        ElasticJobConfigurationProperties testJob1ConfigurationProperties = elasticJobProperties.getJobs().get(jobName);
-        // 更新disabled=true
-        testJob1ConfigurationProperties.setDisabled(true);
-        ElasticJob currentJob = SpringHelper.getBean(testJob1ConfigurationProperties.getElasticJobClass());
-        JobConfiguration currentJobConfiguration = testJob1ConfigurationProperties.toJobConfiguration(jobName);
-        JobScheduler jobScheduler = new JobScheduler(zookeeperRegistryCenter, currentJob, currentJobConfiguration);
-        JobScheduleController jobScheduleController = jobScheduler.getJobScheduleController();
-        jobScheduleController.resumeJob();
+        ElasticJobConfigurationProperties jobConfigurationProperties = elasticJobProperties.getJobs().get(jobName);
+        getJobScheduleController(jobName, jobConfigurationProperties).pauseJob();
         log.info(">>>>>>>>|定时任务{}|已暂停!", jobName);
     }
 
@@ -168,22 +165,30 @@ public class ZkElasticJobHelper {
         if (!checkExists(jobName)) {
             throw new RuntimeException(String.format("定时任务(%s)不存在!", jobName));
         }
-        ElasticJobConfigurationProperties testJob1ConfigurationProperties = elasticJobProperties.getJobs().get(jobName);
-        // 更新disabled=false、重新设置cron
-        testJob1ConfigurationProperties.setDisabled(false);
+        ElasticJobConfigurationProperties jobConfigurationProperties = elasticJobProperties.getJobs().get(jobName);
+        jobConfigurationProperties.setDisabled(false);
         if (newCron != null && !newCron.isEmpty()) {
-            testJob1ConfigurationProperties.setCron(newCron);
+            jobConfigurationProperties.setCron(newCron);
         }
-        ElasticJob currentJob = SpringHelper.getBean(testJob1ConfigurationProperties.getElasticJobClass());
-        JobConfiguration currentJobConfiguration = testJob1ConfigurationProperties.toJobConfiguration(jobName);
-        JobScheduler jobScheduler = new JobScheduler(zookeeperRegistryCenter, currentJob, currentJobConfiguration);
-        JobScheduleController jobScheduleController = jobScheduler.getJobScheduleController();
-        jobScheduleController.resumeJob();
+        getJobScheduleController(jobName, jobConfigurationProperties).resumeJob();
         if (newCron != null && !newCron.isEmpty()) {
             log.info(">>>>>>>>|定时任务:{},新CRON:{}|重启完成!", jobName, newCron);
         } else {
             log.info(">>>>>>>>|定时任务:{}|重启完成!", jobName);
         }
+    }
+
+    /**
+     * 获取指定任务的调度控制器
+     *
+     * @param jobName                    任务名
+     * @param jobConfigurationProperties ElasticJobConfigurationProperties实例
+     * @return JobScheduleController
+     */
+    private JobScheduleController getJobScheduleController(String jobName, ElasticJobConfigurationProperties jobConfigurationProperties) {
+        ElasticJob currentJob = SpringHelper.getBean(jobConfigurationProperties.getElasticJobClass());
+        JobScheduler jobScheduler = new JobScheduler(zookeeperRegistryCenter, currentJob, jobConfigurationProperties.toJobConfiguration(jobName));
+        return jobScheduler.getJobScheduleController();
     }
 
 }
