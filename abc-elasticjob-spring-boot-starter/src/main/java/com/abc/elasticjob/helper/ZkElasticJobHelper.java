@@ -113,18 +113,19 @@ public class ZkElasticJobHelper {
             throw new RuntimeException(String.format("定时任务(%s)不存在!", jobName));
         }
         ElasticJobConfigurationProperties jobConfigurationProperties = jobNameToJobConfigurationPropertiesMap.get(jobName);
-        jobConfigurationProperties.setDisabled(true);
+        jobConfigurationProperties.setDisabled(false);
         getJobScheduleController(jobName, jobConfigurationProperties).triggerJob();
         log.info(">>>>>>>>|定时任务{}|已触发!", jobName);
     }
 
-    public void pauseJob(String jobName) {
+    public void stopJob(String jobName) {
         if (!checkExists(jobName)) {
             throw new RuntimeException(String.format("定时任务(%s)不存在!", jobName));
         }
         ElasticJobConfigurationProperties jobConfigurationProperties = elasticJobProperties.getJobs().get(jobName);
-        getJobScheduleController(jobName, jobConfigurationProperties).pauseJob();
-        log.info(">>>>>>>>|定时任务{}|已暂停!", jobName);
+        jobConfigurationProperties.setDisabled(true);
+        getJobScheduleController(jobName, jobConfigurationProperties).resumeJob();
+        log.info(">>>>>>>>|定时任务{}|已停止!", jobName);
     }
 
     /**

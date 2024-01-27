@@ -38,7 +38,7 @@ public class ActionControllerController {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Collection<String> jobNames = elasticJobHelper.getJobNames();
         log.info(">>>>>>>>|{}", gson.toJson(jobNames));
-        jobNames.forEach(elasticJobHelper::pauseJob);
+        jobNames.forEach(elasticJobHelper::stopJob);
     }
 
     /**
