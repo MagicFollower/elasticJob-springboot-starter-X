@@ -1,5 +1,5 @@
-server:
-  port: 8080
+#server:
+#  port: 8080
 spring:
   application:
     name: AbcElasticJobSpringBootDemo
@@ -12,32 +12,33 @@ elasticjob:
       description: 测试任务1
       # https://cron.qqe2.com/
       cron: 0/2 * * * * ?
-      elasticJobClass: org.example.job.TestJob1
+      elastic-job-class: org.example.job.TestJob1
       # 分片，一般情况下设置为1
-      shardingTotalCount: 1
+      sharding-total-count: 2
+      sharding-item-parameters: 0=A,1=B
       # 失效转移
-      failover: true
+      failover: false
       # 错过重新执行
-      misfire: true
+      misfire: false
       # 是否覆盖已存在作业
       overwrite: true
       # 禁止启动(true禁止，false开启)
-      disabled: true
-    TestJob2:
-      description: 测试任务2
-      # https://cron.qqe2.com/
-      cron: 0/2 * * * * ?
-      elasticJobClass: org.example.job.TestJob2
-      # 分片，一般情况下设置为1
-      shardingTotalCount: 1
-      # 失效转移
-      failover: true
-      # 错过重新执行
-      misfire: true
-      # 是否覆盖已存在作业
-      overwrite: true
-      # 禁止启动(true禁止，false开启)
-      disabled: true
+      disabled: false
+#    TestJob2:
+#      description: 测试任务2
+#      # https://cron.qqe2.com/
+#      cron: 0/2 * * * * ?
+#      elasticJobClass: org.example.job.TestJob2
+#      # 分片，一般情况下设置为1
+#      shardingTotalCount: 1
+#      # 失效转移
+#      failover: true
+#      # 错过重新执行
+#      misfire: true
+#      # 是否覆盖已存在作业
+#      overwrite: true
+#      # 禁止启动(true禁止，false开启)
+#      disabled: true
   regCenter:
     namespace: ELASTICJOB-DEV-TEST-NAMESPACE
     serverLists: localhost:2181
