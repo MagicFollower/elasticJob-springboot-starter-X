@@ -15,7 +15,7 @@ elasticjob:
       elastic-job-class: org.example.job.TestJob1
       # 分片，一般情况下设置为1
       sharding-total-count: 2
-      sharding-item-parameters: 0=A,1=B
+      sharding-item-parameters: 0=Beijing,1=Shanghai,2=Guangzhou
       # 失效转移
       failover: false
       # 错过重新执行
